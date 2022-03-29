@@ -30,6 +30,8 @@ def translate(text, from_lang, to_lang):
 
 
 def forecast(update, context):
+    dict_wind = {'nw': 'северо-западное', 'n': 'северное', 'ne': 'северо-восточное', 'e': 'восточное',
+                 'se': 'юго-восточное', 's': 'южное', 'sw': 'юго-западное', 'w': 'западное', 'c': 'штиль'}
     place = update.message['text']
     apikey = '40d1649f-0493-4b70-98ba-98533de7710b'
     geocoder_request = f'http://geocode-maps.yandex.ru/1.x/?apikey={apikey}&geocode="{place}"&format=json'
@@ -45,7 +47,6 @@ def forecast(update, context):
     headers = {'lat': lat, 'lon': lon, 'lang': 'ru_RU',
                'X-Yandex-API-Key': '9009f2a9-7220-4bb5-be28-0fad1d330b93'}
     response = requests.get('https://api.weather.yandex.ru/v2/forecast?', headers=headers).json()
-    print(response)
     ts = int(response['now'])
     date = datetime.utcfromtimestamp(ts).strftime('%d.%m.%Y')
     temp = response['fact']['temp']
@@ -54,13 +55,16 @@ def forecast(update, context):
     pressure = response['fact']['pressure_mm']
     humidity = response['fact']['humidity']
     wind_speed = response['fact']['wind_speed']
+    wind_dir = dict_wind[response['fact']['wind_dir']]
     update.message.reply_text(f'Прогноз погоды сегодня в городе {place.capitalize()} на {date}:')
     update.message.reply_text(f'Температура: {temp}℃')
     update.message.reply_text(f'Ощущаемая температура: {feels_temp}℃')
     update.message.reply_text(f'Погодное описание: {condition.lower()}')
     update.message.reply_text(f'Давление: {pressure} мм')
     update.message.reply_text(f'Влажность: {humidity}%')
-    update.message.reply_text(f'Скорость ветра {wind_speed} м/с.')
+    update.message.reply_text(f'Скорость ветра: {wind_speed} м/с')
+    update.message.reply_text(f'Направление ветра: {wind_dir}')
+    return ConversationHandler.END
 
 
 def stop(update, context):
