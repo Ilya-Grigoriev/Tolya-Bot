@@ -1,9 +1,57 @@
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler
+from telegram import ReplyKeyboardMarkup
+import requests
+from datetime import datetime
+
+
+def first_response(update, context):
+    update.message.reply_text('Введите название города:')
+    return 1
 
 
 def start(update, context):
+    reply_keyboard = [['/forecast']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     update.message.reply_text(
-        f'Привет, {update.message["chat"]["first_name"]}. Меня зовут Толя! У меня следующий набор функций:')
+        f'Привет, {update.message["chat"]["first_name"]}. Меня зовут Толя! У меня следующий набор функций:',
+        reply_markup=markup)
+
+
+def forecast(update, context):
+    place = update.message['text']
+    apikey = '40d1649f-0493-4b70-98ba-98533de7710b'
+    geocoder_request = f'http://geocode-maps.yandex.ru/1.x/?apikey={apikey}&geocode="{place}"&format=json'
+    response = requests.get(geocoder_request)
+    if response:
+        json_response = response.json()
+        pos = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]['Point']['pos']
+        lon, lat = pos.split()
+    else:
+        print("Ошибка выполнения запроса:")
+        print(geocoder_request)
+        print("Http статус:", response.status_code, "(", response.reason, ")")
+    headers = {'lat': lat, 'lon': lon, 'lang': 'ru_RU',
+               'X-Yandex-API-Key': '9009f2a9-7220-4bb5-be28-0fad1d330b93'}
+    response = requests.get('https://api.weather.yandex.ru/v2/forecast?', headers=headers).json()
+    print(response)
+    ts = int(response['now'])
+    date = datetime.utcfromtimestamp(ts).strftime('%d.%m.%Y')
+    temp = response['fact']['temp']
+    feels_temp = response['fact']['feels_like']
+    pressure = response['fact']['pressure_mm']
+    humidity = response['fact']['humidity']
+    wind_speed = response['fact']['wind_speed']
+    update.message.reply_text(f'Прогноз погоды сегодня в городе {place.capitalize()} на {date}:')
+    update.message.reply_text(f'Температура: {temp}℃')
+    update.message.reply_text(f'Ощущаемая температура: {feels_temp}℃')
+    update.message.reply_text(f'Давление: {pressure} мм')
+    update.message.reply_text(f'Влажность: {humidity}%')
+    update.message.reply_text(f'Скорость ветра {wind_speed} м/с.')
+
+
+def stop(update, context):
+    update.message.reply_text('Программа завершена', reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
 
 
 def main():
@@ -11,10 +59,17 @@ def main():
     updater = Updater(token)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('start', start))
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('forecast', first_response)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), forecast)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    dp.add_handler(conv_handler)
     updater.start_polling()
     updater.idle()
 
 
-# Запускаем функцию main() в случае запуска скрипта.
 if __name__ == '__main__':
     main()
