@@ -17,6 +17,18 @@ def start(update, context):
         reply_markup=markup)
 
 
+def translate(text, from_lang, to_lang):
+    url = "https://translated-mymemory---translation-memory.p.rapidapi.com/api/get"
+    direct = f'{from_lang}|{to_lang}'
+    querystring = {"langpair": direct, "q": text, "mt": "1", "onlyprivate": "0", "de": "a@b.c"}
+    headers = {
+        'x-rapidapi-key': "850ab61210msh591f51e046aed36p1f65bcjsn098691cd7941",
+        'x-rapidapi-host': "translated-mymemory---translation-memory.p.rapidapi.com"
+    }
+    response = requests.request("GET", url, headers=headers, params=querystring).json()
+    return response['responseData']['translatedText']
+
+
 def forecast(update, context):
     place = update.message['text']
     apikey = '40d1649f-0493-4b70-98ba-98533de7710b'
@@ -38,12 +50,14 @@ def forecast(update, context):
     date = datetime.utcfromtimestamp(ts).strftime('%d.%m.%Y')
     temp = response['fact']['temp']
     feels_temp = response['fact']['feels_like']
+    condition = translate(response['fact']['condition'], 'en', 'ru')
     pressure = response['fact']['pressure_mm']
     humidity = response['fact']['humidity']
     wind_speed = response['fact']['wind_speed']
     update.message.reply_text(f'Прогноз погоды сегодня в городе {place.capitalize()} на {date}:')
     update.message.reply_text(f'Температура: {temp}℃')
     update.message.reply_text(f'Ощущаемая температура: {feels_temp}℃')
+    update.message.reply_text(f'Погодное описание: {condition.lower()}')
     update.message.reply_text(f'Давление: {pressure} мм')
     update.message.reply_text(f'Влажность: {humidity}%')
     update.message.reply_text(f'Скорость ветра {wind_speed} м/с.')
