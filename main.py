@@ -9,10 +9,12 @@ def clear_data(context):
     context.user_data['amount'] = None
     context.user_data['from_cur'] = None
     context.user_data['to_cur'] = None
+    context.user_data['from_lang'] = None
+    context.user_data['to_lang'] = None
 
 
 def start_keyboard():
-    reply_keyboard = [['/forecast', '/converter_currency']]
+    reply_keyboard = [['/forecast', '/converter_currency', '/translate']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -20,6 +22,10 @@ def start_keyboard():
 def first_response(update, context):
     if update.message['text'] == '/converter_currency':
         update.message.reply_text('Введите количество денег:')
+    elif update.message['text'] == '/translate':
+        reply_keyboard = [[i] for i in context.user_data['languages']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+        update.message.reply_text('Выберите язык, с которого переводите текст:', reply_markup=markup)
     else:
         update.message.reply_text('Введите название города:')
     return 1
@@ -28,6 +34,8 @@ def first_response(update, context):
 def start(update, context):
     with open('currencies.txt', encoding='utf8') as file_1:
         context.user_data['currencies'] = [i.strip('\n') for i in file_1.readlines()]
+    context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
+                                      'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
     update.message.reply_text(
         f'Привет, {update.message["chat"]["first_name"]}. Меня зовут Толя! У меня следующий набор функций:',
         reply_markup=start_keyboard())
@@ -66,7 +74,7 @@ def set_from_cur(update, context):
         cur = update.message['text']
         if cur in ' '.join(context.user_data['currencies']):
             context.user_data['from_cur'] = cur
-            update.message.reply_text('Выберите валюты, в которую переводите деньги:')
+            update.message.reply_text('Выберите валюты, в которую хотите перевести деньги:')
             return 3
         else:
             raise Exception
@@ -145,6 +153,56 @@ def forecast(update, context):
     return ConversationHandler.END
 
 
+# Переводчик
+def set_from_lang(update, context):
+    try:
+        lang = update.message['text']
+        if lang in context.user_data['languages'].keys():
+            context.user_data['from_lang'] = lang
+            update.message.reply_text('Выберите язык, на который хотите перевести текст:')
+        else:
+            update.message.reply_text('Данного языка нет в списке', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
+        return 2
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+        clear_data(context)
+        return ConversationHandler.END
+
+
+def set_to_lang(update, context):
+    try:
+        lang = update.message['text']
+        if lang in context.user_data['languages'].keys():
+            context.user_data['to_lang'] = lang
+            update.message.reply_text('Введите текст для перевода:', reply_markup=ReplyKeyboardRemove())
+        else:
+            update.message.reply_text('Данного языка нет в списке', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
+        return 3
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+        clear_data(context)
+        return ConversationHandler.END
+
+
+def set_text_for_translate(update, context):
+    try:
+        text = update.message['text']
+        from_lang = context.user_data['from_lang']
+        to_lang = context.user_data['to_lang']
+        languages = context.user_data['languages']
+        update.message.reply_text(translate(text, languages[from_lang], languages[to_lang]),
+                                  reply_markup=start_keyboard())
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    clear_data(context)
+    return ConversationHandler.END
+
+
+# Остановщик
 def stop(update, context):
     reply_keyboard = [['/forecast', '/converter_currency']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
@@ -175,6 +233,16 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(converter_handler)
+    translate_handler = ConversationHandler(
+        entry_points=[CommandHandler('translate', first_response, pass_user_data=True)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), set_from_lang, pass_user_data=True)],
+            2: [MessageHandler(Filters.text & (~ Filters.command), set_to_lang, pass_user_data=True)],
+            3: [MessageHandler(Filters.text & (~ Filters.command), set_text_for_translate, pass_user_data=True)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    dp.add_handler(translate_handler)
     updater.start_polling()
     updater.idle()
 
