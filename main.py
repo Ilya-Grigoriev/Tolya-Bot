@@ -58,6 +58,10 @@ def translate(text, from_lang, to_lang):
 def set_amount(update, context):
     try:
         context.user_data['amount'] = float(update.message['text'])
+        if context.user_data['amount'] < 0:
+            update.message.reply_text('Нельзя вводить отрицательное количество денег')
+            update.message.reply_text('Введите количество денег:')
+            return 1
         update.message.reply_text('\n'.join(context.user_data['currencies']))
         reply_keyboard = [[i.split()[0]] for i in context.user_data['currencies']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
@@ -66,7 +70,7 @@ def set_amount(update, context):
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
-        return ConversationHandler.END
+    return ConversationHandler.END
 
 
 def set_from_cur(update, context):
@@ -77,7 +81,9 @@ def set_from_cur(update, context):
             update.message.reply_text('Выберите валюты, в которую хотите перевести деньги:')
             return 3
         else:
-            raise Exception
+            update.message.reply_text('Данной валюты нет в списке')
+            update.message.reply_text('Выберите валюту, из который переводите деньги:')
+            return 2
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
@@ -101,7 +107,9 @@ def set_to_cur(update, context):
             response = requests.request("GET", url, headers=headers, params=params)
             update.message.reply_text(f'{float(response.text) * amount} {cur}', reply_markup=start_keyboard())
         else:
-            raise Exception
+            update.message.reply_text('Данной валюты нет в списке')
+            update.message.reply_text('Выберите валюты, в которую хотите перевести деньги:')
+            return 3
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
@@ -111,12 +119,14 @@ def set_to_cur(update, context):
 
 # Прогноз погоды
 def forecast(update, context):
-    reply_keyboard = [['/forecast', '/converter_currency']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     try:
         dict_wind = {'nw': 'северо-западное', 'n': 'северное', 'ne': 'северо-восточное', 'e': 'восточное',
                      'se': 'юго-восточное', 's': 'южное', 'sw': 'юго-западное', 'w': 'западное', 'c': 'штиль'}
         place = update.message['text']
+        if place.isdigit():
+            update.message.reply_text('Некорректное название города')
+            update.message.reply_text('Введите название города:')
+            return 1
         apikey = '40d1649f-0493-4b70-98ba-98533de7710b'
         geocoder_request = f'http://geocode-maps.yandex.ru/1.x/?apikey={apikey}&geocode="{place}"&format=json'
         response = requests.get(geocoder_request)
@@ -147,7 +157,7 @@ def forecast(update, context):
         update.message.reply_text(f'Давление: {pressure} мм')
         update.message.reply_text(f'Влажность: {humidity}%')
         update.message.reply_text(f'Скорость ветра: {wind_speed} м/с')
-        update.message.reply_text(f'Направление ветра: {wind_dir}', reply_markup=markup)
+        update.message.reply_text(f'Направление ветра: {wind_dir}', reply_markup=start_keyboard())
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
     return ConversationHandler.END
@@ -161,9 +171,9 @@ def set_from_lang(update, context):
             context.user_data['from_lang'] = lang
             update.message.reply_text('Выберите язык, на который хотите перевести текст:')
         else:
-            update.message.reply_text('Данного языка нет в списке', reply_markup=start_keyboard())
-            clear_data(context)
-            return ConversationHandler.END
+            update.message.reply_text('Данного языка нет в списке')
+            update.message.reply_text('Выберите язык, с которого переводите текст:')
+            return 1
         return 2
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
@@ -178,9 +188,9 @@ def set_to_lang(update, context):
             context.user_data['to_lang'] = lang
             update.message.reply_text('Введите текст для перевода:', reply_markup=ReplyKeyboardRemove())
         else:
-            update.message.reply_text('Данного языка нет в списке', reply_markup=start_keyboard())
-            clear_data(context)
-            return ConversationHandler.END
+            update.message.reply_text('Данного языка нет в списке')
+            update.message.reply_text('Выберите язык, на который хотите перевести текст:')
+            return 2
         return 3
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
