@@ -1,8 +1,9 @@
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler, CallbackQueryHandler
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 import requests
 from datetime import datetime
 import traceback
+import re
 
 
 def clear_data(context):
@@ -14,20 +15,22 @@ def clear_data(context):
 
 
 def start_keyboard():
-    reply_keyboard = [['/forecast', '/converter_currency', '/translate']]
+    reply_keyboard = [['/forecast', '/converter_currency', '/translate'], ['/spell_check']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
 
 def first_response(update, context):
-    if update.message['text'] == '/converter_currency':
+    if update.message['text'] == '/forecast':
+        update.message.reply_text('Введите название города:')
+    elif update.message['text'] == '/converter_currency':
         update.message.reply_text('Введите количество денег:')
     elif update.message['text'] == '/translate':
         reply_keyboard = [[i] for i in context.user_data['languages']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         update.message.reply_text('Выберите язык, с которого переводите текст:', reply_markup=markup)
-    else:
-        update.message.reply_text('Введите название города:')
+    elif update.message['text'] == '/spell_check':
+        update.message.reply_text('Введите текст для проверки:')
     return 1
 
 
@@ -67,6 +70,9 @@ def set_amount(update, context):
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         update.message.reply_text('Выберите валюту, из который переводите деньги:', reply_markup=markup)
         return 2
+    except ValueError:
+        update.message.reply_text('Введите количество денег:')
+        return 1
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
@@ -212,6 +218,28 @@ def set_text_for_translate(update, context):
     return ConversationHandler.END
 
 
+# Проверка орфографии
+def spell_checker(update, context):
+    try:
+        # text = re.sub(r'[^\w\s]', '', update.message['text']).split()
+        text = update.message['text'].split()
+        url_checker = 'https://speller.yandex.net/services/spellservice.json/checkText?'
+        params = {'text': '+'.join(text)}
+        response = requests.get(url_checker, params=params).json()
+        if len(response) == 0:
+            update.message.reply_text('Ошибок в тексте не обнаружено', reply_markup=start_keyboard())
+        else:
+            update.message.reply_text(f'Количество ошибок: {len(response)}')
+            for i in response:
+                incor, cor = i['word'], i['s'][0]
+                update.message.reply_text(f'Неправильно: {incor}')
+                update.message.reply_text(f'Правильно: {cor}')
+            update.message.reply_text('Вывод ошибок окончен', reply_markup=start_keyboard())
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     reply_keyboard = [['/forecast', '/converter_currency']]
@@ -253,6 +281,14 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(translate_handler)
+    spell_handler = ConversationHandler(
+        entry_points=[CommandHandler('spell_check', first_response)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), spell_checker)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    dp.add_handler(spell_handler)
     updater.start_polling()
     updater.idle()
 
