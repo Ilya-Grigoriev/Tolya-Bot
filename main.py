@@ -1,5 +1,5 @@
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler, CallbackQueryHandler
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Bot
 import requests
 from datetime import datetime
 import traceback
@@ -15,7 +15,7 @@ def clear_data(context):
 
 
 def start_keyboard():
-    reply_keyboard = [['/forecast', '/converter_currency', '/translate'], ['/spell_check']]
+    reply_keyboard = [['/forecast', '/converter_currency', '/translate'], ['/spell_check', '/ip_check']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -31,6 +31,8 @@ def first_response(update, context):
         update.message.reply_text('Выберите язык, с которого переводите текст:', reply_markup=markup)
     elif update.message['text'] == '/spell_check':
         update.message.reply_text('Введите текст для проверки:')
+    elif update.message['text'] == '/ip_check':
+        update.message.reply_text('Введите IP-адрес:')
     return 1
 
 
@@ -240,6 +242,29 @@ def spell_checker(update, context):
     return ConversationHandler.END
 
 
+# Проверка ip-адреса
+def ip_checker(update, context):
+    try:
+        ip = update.message['text']
+        if re.match(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$", ip):
+            response = requests.get(f'http://ipwhois.app/json/{ip}').json()
+            update.message.reply_text(f'Континент: {translate(response["continent"], "en", "ru")}')
+            update.message.reply_text(f'Страна: {translate(response["country"], "en", "ru")}')
+            update.message.reply_text(f'Регион: {translate(response["region"], "en", "ru")}')
+            update.message.reply_text(f'Город: {translate(response["city"], "en", "ru")}')
+            update.message.reply_text('Расположение IP-адреса на карте:', reply_markup=start_keyboard())
+            lat, lon = response['latitude'], response['longitude']
+            bot = Bot('5147228144:AAG-lIcg7-YZJqpJ5gfHZrR_J6hBtAZomO0')
+            bot.send_location(update['message']['chat']['id'], lat, lon)
+        else:
+            update.message.reply_text('Некорректный IP-адрес')
+            update.message.reply_text('Введите IP-адрес:')
+            return 1
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     reply_keyboard = [['/forecast', '/converter_currency']]
@@ -289,6 +314,14 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(spell_handler)
+    ip_handler = ConversationHandler(
+        entry_points=[CommandHandler('ip_check', first_response)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), ip_checker)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    dp.add_handler(ip_handler)
     updater.start_polling()
     updater.idle()
 
