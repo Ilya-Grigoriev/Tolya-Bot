@@ -16,7 +16,8 @@ def clear_data(context):
 
 def start_keyboard():
     reply_keyboard = [['/forecast', '/converter_currency', '/translate'],
-                      ['/spell_check', '/ip_check', '/phone_number_check']]
+                      ['/spell_check', '/ip_check', '/phone_number_check'],
+                      ['/url_shortener']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -36,6 +37,8 @@ def first_response(update, context):
         update.message.reply_text('Введите IP-адрес:')
     elif update.message['text'] == '/phone_number_check':
         update.message.reply_text('Введите номер телефона:')
+    elif update.message['text'] == '/url_shortener':
+        update.message.reply_text('Введите ссылку:')
     return 1
 
 
@@ -294,6 +297,31 @@ def phone_number_checker(update, context):
     return ConversationHandler.END
 
 
+# Сокращение URL-адресов
+def url_shortener(update, context):
+    try:
+        link = update.message['text']
+        url = "https://url-shortener-service.p.rapidapi.com/shorten"
+        payload = f"url={link}"
+        headers = {
+            "content-type": "application/x-www-form-urlencoded",
+            "X-RapidAPI-Host": "url-shortener-service.p.rapidapi.com",
+            "X-RapidAPI-Key": "5ba360e216mshff693a6a557ef28p19c45bjsne7791971c241"
+        }
+        response = requests.request("POST", url, data=payload, headers=headers).json()
+        if response.get('error'):
+            update.message.reply_text('Введена некорректная ссылка')
+            update.message.reply_text('Введите ссылку:')
+            return 1
+        else:
+            update.message.reply_text('Итоговый вид сокращённой ссылки:')
+            update.message.reply_text(response['result_url'], reply_markup=start_keyboard())
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     clear_data(context)
@@ -358,6 +386,14 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(phone_number_handler)
+    url_shortener_handler = ConversationHandler(
+        entry_points=[CommandHandler('url_shortener', first_response)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), url_shortener)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    dp.add_handler(url_shortener_handler)
     updater.start_polling()
     updater.idle()
 
