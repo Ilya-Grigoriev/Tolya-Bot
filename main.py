@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 import traceback
 import re
+import xml.etree.ElementTree as ET
 
 
 def clear_data(context):
@@ -18,7 +19,7 @@ def clear_data(context):
 def start_keyboard():
     reply_keyboard = [['/forecast', '/converter_currency', '/translate'],
                       ['/spell_check', '/ip_check', '/phone_number_check'],
-                      ['/url_shortener', '/lyrics']]
+                      ['/url_shortener', '/lyrics', '/anecdote']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -380,6 +381,21 @@ def set_song(update, context):
     return ConversationHandler.END
 
 
+# Анекдот
+def anecdote(update, context):
+    try:
+        update.message.reply_text('Внимание! В анекдоте может присутствовать нецензурная брань')
+        response = requests.get('http://rzhunemogu.ru/Rand.aspx?CType=1')
+        root = ET.fromstring(response.content.decode(response.encoding))
+        for i in root:
+            update.message.reply_text(i.text)
+        update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     clear_data(context)
@@ -451,6 +467,7 @@ def main():
         },
         fallbacks=[CommandHandler('stop', stop)]
     )
+    dp.add_handler(url_shortener_handler)
     lyrics_handler = ConversationHandler(
         entry_points=[CommandHandler('lyrics', first_response, pass_user_data=True)],
         states={
@@ -460,7 +477,7 @@ def main():
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
     dp.add_handler(lyrics_handler)
-    dp.add_handler(url_shortener_handler)
+    dp.add_handler(CommandHandler('anecdote', anecdote))
     updater.start_polling()
     updater.idle()
 
