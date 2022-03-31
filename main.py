@@ -47,10 +47,6 @@ def first_response(update, context):
 
 
 def start(update, context):
-    with open('currencies.txt', encoding='utf8') as file_1:
-        context.user_data['currencies'] = [i.strip('\n') for i in file_1.readlines()]
-    context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
-                                      'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
     update.message.reply_text(
         f'Привет, {update.message["chat"]["first_name"]}. Меня зовут Толя! У меня следующий набор функций:',
         reply_markup=start_keyboard())
@@ -71,6 +67,8 @@ def translate(text, from_lang, to_lang):
 
 # Конвертер валют
 def set_amount(update, context):
+    with open('currencies.txt', encoding='utf8') as file_1:
+        context.user_data['currencies'] = [i.strip('\n') for i in file_1.readlines()]
     try:
         context.user_data['amount'] = float(update.message['text'])
         if context.user_data['amount'] < 0:
@@ -183,6 +181,8 @@ def forecast(update, context):
 
 # Переводчик
 def set_from_lang(update, context):
+    context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
+                                      'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
     try:
         lang = update.message['text']
         if lang in context.user_data['languages'].keys():
