@@ -12,12 +12,13 @@ def clear_data(context):
     context.user_data['to_cur'] = None
     context.user_data['from_lang'] = None
     context.user_data['to_lang'] = None
+    context.user_data['songs'] = None
 
 
 def start_keyboard():
     reply_keyboard = [['/forecast', '/converter_currency', '/translate'],
                       ['/spell_check', '/ip_check', '/phone_number_check'],
-                      ['/url_shortener']]
+                      ['/url_shortener', '/lyrics']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -39,6 +40,8 @@ def first_response(update, context):
         update.message.reply_text('Введите номер телефона:')
     elif update.message['text'] == '/url_shortener':
         update.message.reply_text('Введите ссылку:')
+    elif update.message['text'] == '/lyrics':
+        update.message.reply_text('Введите имя испольнителя:')
     return 1
 
 
@@ -322,6 +325,61 @@ def url_shortener(update, context):
     return ConversationHandler.END
 
 
+# Получение текста песни
+def set_singer(update, context):
+    try:
+        singer_name = update.message['text']
+        url = "https://genius.p.rapidapi.com/search"
+        querystring = {"q": singer_name}
+        headers = {
+            "X-RapidAPI-Host": "genius.p.rapidapi.com",
+            "X-RapidAPI-Key": "5ba360e216mshff693a6a557ef28p19c45bjsne7791971c241"
+        }
+        response = requests.request("GET", url, headers=headers, params=querystring).json()
+        songs = response['response']['hits']
+        if len(songs) == 0:
+            update.message.reply_text('Не удалось найти исполнителя')
+            update.message.reply_text('Введите имя исполнителя:')
+            return 1
+        context.user_data['songs'] = songs
+        update.message.reply_text('Введите название песни:')
+        return 2
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    clear_data(context)
+    return ConversationHandler.END
+
+
+def set_song(update, context):
+    try:
+        song_name = update.message['text']
+        songs = context.user_data['songs']
+        id_song = None
+        for i in songs:
+            if song_name.lower() in i['result']['title'].lower():
+                id_song = i['result']['api_path']
+                break
+        if bool(id_song) is not True:
+            update.message.reply_text('Не удалось найти песню с таким названием')
+            update.message.reply_text('Введите название песни:')
+            return 2
+        url = f"https://genius-song-lyrics1.p.rapidapi.com/{id_song}/lyrics"
+        headers = {
+            "X-RapidAPI-Host": "genius-song-lyrics1.p.rapidapi.com",
+            "X-RapidAPI-Key": "5ba360e216mshff693a6a557ef28p19c45bjsne7791971c241"
+        }
+        response = requests.request("GET", url, headers=headers).json()
+        song = response['response']['lyrics']
+        update.message.reply_text('Текст песни:')
+        update.message.reply_text(song['lyrics']['body']['plain'],
+                                  reply_markup=start_keyboard())
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    clear_data(context)
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     clear_data(context)
@@ -393,6 +451,15 @@ def main():
         },
         fallbacks=[CommandHandler('stop', stop)]
     )
+    lyrics_handler = ConversationHandler(
+        entry_points=[CommandHandler('lyrics', first_response, pass_user_data=True)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
+            2: [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)]
+        },
+        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
+    )
+    dp.add_handler(lyrics_handler)
     dp.add_handler(url_shortener_handler)
     updater.start_polling()
     updater.idle()
