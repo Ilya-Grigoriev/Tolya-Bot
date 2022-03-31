@@ -15,7 +15,8 @@ def clear_data(context):
 
 
 def start_keyboard():
-    reply_keyboard = [['/forecast', '/converter_currency', '/translate'], ['/spell_check', '/ip_check']]
+    reply_keyboard = [['/forecast', '/converter_currency', '/translate'],
+                      ['/spell_check', '/ip_check', '/phone_number_check']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -33,6 +34,8 @@ def first_response(update, context):
         update.message.reply_text('Введите текст для проверки:')
     elif update.message['text'] == '/ip_check':
         update.message.reply_text('Введите IP-адрес:')
+    elif update.message['text'] == '/phone_number_check':
+        update.message.reply_text('Введите номер телефона:')
     return 1
 
 
@@ -265,11 +268,36 @@ def ip_checker(update, context):
     return ConversationHandler.END
 
 
+# Проверка номера телефона
+def phone_number_checker(update, context):
+    try:
+        number = update.message['text']
+        key = '658b78d8286245e6b363f9fe2bd632da'
+        params = {'number': number, 'access_key': key}
+        response = requests.get('http://apilayer.net/api/validate?', params=params).json()
+        if (response.get('error')) or (response['valid'] is not True):
+            update.message.reply_text('Введён неправильный формат для номера телефона')
+            update.message.reply_text('Введите номер телефона:')
+            return 1
+        else:
+            phone_number = response['number']
+            country = response['country_name']
+            location = response['location']
+            carrier = response['carrier']
+            update.message.reply_text(f'Информация по номеру {phone_number}:')
+            update.message.reply_text(f'Страна: {translate(country, "en", "ru")}')
+            update.message.reply_text(f'Местоположение: {translate(location, "en", "ru")}')
+            update.message.reply_text(f'Оператор: {carrier}', reply_markup=start_keyboard())
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
-    reply_keyboard = [['/forecast', '/converter_currency']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text('Программа завершена', reply_markup=markup)
+    clear_data(context)
+    update.message.reply_text('Программа завершена', reply_markup=start_keyboard())
     return ConversationHandler.END
 
 
@@ -283,7 +311,7 @@ def main():
         states={
             1: [MessageHandler(Filters.text & (~ Filters.command), forecast)]
         },
-        fallbacks=[CommandHandler('stop', stop)]
+        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
     dp.add_handler(forecast_handler)
     converter_handler = ConversationHandler(
@@ -293,7 +321,7 @@ def main():
             2: [MessageHandler(Filters.text & (~ Filters.command), set_from_cur, pass_user_data=True)],
             3: [MessageHandler(Filters.text & (~ Filters.command), set_to_cur, pass_user_data=True)]
         },
-        fallbacks=[CommandHandler('stop', stop)]
+        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
     dp.add_handler(converter_handler)
     translate_handler = ConversationHandler(
@@ -303,7 +331,7 @@ def main():
             2: [MessageHandler(Filters.text & (~ Filters.command), set_to_lang, pass_user_data=True)],
             3: [MessageHandler(Filters.text & (~ Filters.command), set_text_for_translate, pass_user_data=True)]
         },
-        fallbacks=[CommandHandler('stop', stop)]
+        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
     dp.add_handler(translate_handler)
     spell_handler = ConversationHandler(
@@ -322,6 +350,14 @@ def main():
         fallbacks=[CommandHandler('stop', stop)]
     )
     dp.add_handler(ip_handler)
+    phone_number_handler = ConversationHandler(
+        entry_points=[CommandHandler('phone_number_check', first_response)],
+        states={
+            1: [MessageHandler(Filters.text & (~ Filters.command), phone_number_checker)]
+        },
+        fallbacks=[CommandHandler('stop', stop)]
+    )
+    dp.add_handler(phone_number_handler)
     updater.start_polling()
     updater.idle()
 
