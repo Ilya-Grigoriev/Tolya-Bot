@@ -6,6 +6,7 @@ import traceback
 import re
 import xml.etree.ElementTree as ET
 from io import BytesIO
+from gtts import gTTS
 import os
 
 
