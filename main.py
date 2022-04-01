@@ -17,33 +17,48 @@ def clear_data(context):
 
 
 def start_keyboard():
-    reply_keyboard = [['/forecast', '/converter_currency', '/translate'],
-                      ['/spell_check', '/ip_check', '/phone_number_check'],
-                      ['/url_shortener', '/lyrics', '/anecdote']]
+    reply_keyboard = [['Прогноз погоды', 'Конвертер валют', 'Переводчик текста'], ['Орфографический анализ текста'],
+                      ['Получение информации по IP-адресу', 'Получение информации по номеру телефона'],
+                      ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
 
 def first_response(update, context):
-    if update.message['text'] == '/forecast':
+    context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
+                                      'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
+    if update.message['text'] == 'Прогноз погоды':
         update.message.reply_text('Введите название города:')
-    elif update.message['text'] == '/converter_currency':
+        return 'FORECAST'
+    elif update.message['text'] == 'Конвертер валют':
         update.message.reply_text('Введите количество денег:')
-    elif update.message['text'] == '/translate':
+        return 'SET_AMOUNT'
+    elif update.message['text'] == 'Переводчик текста':
         reply_keyboard = [[i] for i in context.user_data['languages']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         update.message.reply_text('Выберите язык, с которого переводите текст:', reply_markup=markup)
-    elif update.message['text'] == '/spell_check':
+        return 'SET_FROM_LANG'
+    elif update.message['text'] == 'Орфографический анализ текста':
         update.message.reply_text('Введите текст для проверки:')
-    elif update.message['text'] == '/ip_check':
+        return 'SPELL_CHECK'
+    elif update.message['text'] == 'Получение информации по IP-адресу':
         update.message.reply_text('Введите IP-адрес:')
-    elif update.message['text'] == '/phone_number_check':
+        return 'IP_CHECK'
+    elif update.message['text'] == 'Получение информации по номеру телефона':
         update.message.reply_text('Введите номер телефона:')
-    elif update.message['text'] == '/url_shortener':
+        return 'PHONE_NUMBER_CHECK'
+    elif update.message['text'] == 'Сократитель ссылок':
         update.message.reply_text('Введите ссылку:')
-    elif update.message['text'] == '/lyrics':
+        return 'URL_SHORTENER'
+    elif update.message['text'] == 'Поиск текста песни':
         update.message.reply_text('Введите имя испольнителя:')
-    return 1
+        return 'SET_SINGER'
+    elif update.message['text'] == 'Случайный анекдот':
+        update.message.reply_text('Внимание! В анекдоте может присутствовать нецензурная брань')
+        for i in anecdote():
+            update.message.reply_text(i)
+        update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+    return ConversationHandler.END
 
 
 def start(update, context):
@@ -74,15 +89,15 @@ def set_amount(update, context):
         if context.user_data['amount'] < 0:
             update.message.reply_text('Нельзя вводить отрицательное количество денег')
             update.message.reply_text('Введите количество денег:')
-            return 1
+            return 'SET_AMOUNT'
         update.message.reply_text('\n'.join(context.user_data['currencies']))
         reply_keyboard = [[i.split()[0]] for i in context.user_data['currencies']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         update.message.reply_text('Выберите валюту, из который переводите деньги:', reply_markup=markup)
-        return 2
+        return 'SET_FROM_CUR'
     except ValueError:
         update.message.reply_text('Введите количество денег:')
-        return 1
+        return 'SET_AMOUNT'
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
@@ -95,11 +110,11 @@ def set_from_cur(update, context):
         if cur in ' '.join(context.user_data['currencies']):
             context.user_data['from_cur'] = cur
             update.message.reply_text('Выберите валюты, в которую хотите перевести деньги:')
-            return 3
+            return 'SET_TO_CUR'
         else:
             update.message.reply_text('Данной валюты нет в списке')
             update.message.reply_text('Выберите валюту, из который переводите деньги:')
-            return 2
+            return 'SET_FROM_CUR'
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
@@ -125,7 +140,7 @@ def set_to_cur(update, context):
         else:
             update.message.reply_text('Данной валюты нет в списке')
             update.message.reply_text('Выберите валюты, в которую хотите перевести деньги:')
-            return 3
+            return 'SET_TO_CUR'
     except Exception:
         update.message.reply_text('Не удалось обработать запрос', reply_markup=start_keyboard())
         print(traceback.format_exc())
@@ -142,7 +157,7 @@ def forecast(update, context):
         if place.isdigit():
             update.message.reply_text('Некорректное название города')
             update.message.reply_text('Введите название города:')
-            return 1
+            return 'FORECAST'
         apikey = '40d1649f-0493-4b70-98ba-98533de7710b'
         geocoder_request = f'http://geocode-maps.yandex.ru/1.x/?apikey={apikey}&geocode="{place}"&format=json'
         response = requests.get(geocoder_request)
@@ -154,6 +169,7 @@ def forecast(update, context):
             print("Ошибка выполнения запроса:")
             print(geocoder_request)
             print("Http статус:", response.status_code, "(", response.reason, ")")
+            raise Exception
         headers = {'lat': lat, 'lon': lon, 'lang': 'ru_RU',
                    'X-Yandex-API-Key': '9009f2a9-7220-4bb5-be28-0fad1d330b93'}
         response = requests.get('https://api.weather.yandex.ru/v2/forecast?', headers=headers).json()
@@ -181,8 +197,6 @@ def forecast(update, context):
 
 # Переводчик
 def set_from_lang(update, context):
-    context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
-                                      'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
     try:
         lang = update.message['text']
         if lang in context.user_data['languages'].keys():
@@ -191,8 +205,8 @@ def set_from_lang(update, context):
         else:
             update.message.reply_text('Данного языка нет в списке')
             update.message.reply_text('Выберите язык, с которого переводите текст:')
-            return 1
-        return 2
+            return 'SET_FROM_LANG'
+        return 'SET_TO_LANG'
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
         clear_data(context)
@@ -208,8 +222,8 @@ def set_to_lang(update, context):
         else:
             update.message.reply_text('Данного языка нет в списке')
             update.message.reply_text('Выберите язык, на который хотите перевести текст:')
-            return 2
-        return 3
+            return 'SET_TO_LANG'
+        return 'SET_TEXT_FOR_TRANSLATE'
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
         clear_data(context)
@@ -269,7 +283,7 @@ def ip_checker(update, context):
         else:
             update.message.reply_text('Некорректный IP-адрес')
             update.message.reply_text('Введите IP-адрес:')
-            return 1
+            return 'IP_CHECK'
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
     return ConversationHandler.END
@@ -285,7 +299,7 @@ def phone_number_checker(update, context):
         if (response.get('error')) or (response['valid'] is not True):
             update.message.reply_text('Введён неправильный формат для номера телефона')
             update.message.reply_text('Введите номер телефона:')
-            return 1
+            return 'PHONE_NUMBER_CHECK'
         else:
             phone_number = response['number']
             country = response['country_name']
@@ -316,7 +330,7 @@ def url_shortener(update, context):
         if response.get('error'):
             update.message.reply_text('Введена некорректная ссылка')
             update.message.reply_text('Введите ссылку:')
-            return 1
+            return 'URL_SHORTENER'
         else:
             update.message.reply_text('Итоговый вид сокращённой ссылки:')
             update.message.reply_text(response['result_url'], reply_markup=start_keyboard())
@@ -341,10 +355,10 @@ def set_singer(update, context):
         if len(songs) == 0:
             update.message.reply_text('Не удалось найти исполнителя')
             update.message.reply_text('Введите имя исполнителя:')
-            return 1
+            return 'SET_SINGER'
         context.user_data['songs'] = songs
         update.message.reply_text('Введите название песни:')
-        return 2
+        return 'SET_SONG'
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
     clear_data(context)
@@ -363,7 +377,7 @@ def set_song(update, context):
         if bool(id_song) is not True:
             update.message.reply_text('Не удалось найти песню с таким названием')
             update.message.reply_text('Введите название песни:')
-            return 2
+            return 'SET_SONG'
         url = f"https://genius-song-lyrics1.p.rapidapi.com/{id_song}/lyrics"
         headers = {
             "X-RapidAPI-Host": "genius-song-lyrics1.p.rapidapi.com",
@@ -382,18 +396,18 @@ def set_song(update, context):
 
 
 # Анекдот
-def anecdote(update, context):
+def anecdote():
     try:
-        update.message.reply_text('Внимание! В анекдоте может присутствовать нецензурная брань')
+        text = update.message['text']
         response = requests.get('http://rzhunemogu.ru/Rand.aspx?CType=1')
         root = ET.fromstring(response.content.decode(response.encoding))
+        list_1 = []
         for i in root:
-            update.message.reply_text(i.text)
-        update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+            list_1.append(i.text)
+        return list_1
     except Exception:
         print(traceback.format_exc())
-        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
-    return ConversationHandler.END
+        return ['Не удалось обработать ваш запрос']
 
 
 # Остановщик
@@ -408,76 +422,27 @@ def main():
     updater = Updater(token)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler('start', start, pass_user_data=True))
-    forecast_handler = ConversationHandler(
-        entry_points=[CommandHandler('forecast', first_response)],
+    conv_handler = ConversationHandler(
+        entry_points=[MessageHandler(Filters.text & (~ Filters.command), first_response)],
         states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), forecast)]
+            'FORECAST': [MessageHandler(Filters.text & (~ Filters.command), forecast)],
+            'SET_AMOUNT': [MessageHandler(Filters.text & (~ Filters.command), set_amount, pass_user_data=True)],
+            'SET_FROM_CUR': [MessageHandler(Filters.text & (~ Filters.command), set_from_cur, pass_user_data=True)],
+            'SET_TO_CUR': [MessageHandler(Filters.text & (~ Filters.command), set_to_cur, pass_user_data=True)],
+            'SET_FROM_LANG': [MessageHandler(Filters.text & (~ Filters.command), set_from_lang, pass_user_data=True)],
+            'SET_TO_LANG': [MessageHandler(Filters.text & (~ Filters.command), set_to_lang, pass_user_data=True)],
+            'SET_TEXT_FOR_TRANSLATE': [
+                MessageHandler(Filters.text & (~ Filters.command), set_text_for_translate, pass_user_data=True)],
+            'SPELL_CHECK': [MessageHandler(Filters.text & (~ Filters.command), spell_checker)],
+            'IP_CHECK': [MessageHandler(Filters.text & (~ Filters.command), ip_checker)],
+            'PHONE_NUMBER_CHECK': [MessageHandler(Filters.text & (~ Filters.command), phone_number_checker)],
+            'URL_SHORTENER': [MessageHandler(Filters.text & (~ Filters.command), url_shortener)],
+            'SET_SINGER': [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
+            'SET_SONG': [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)],
         },
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
-    dp.add_handler(forecast_handler)
-    converter_handler = ConversationHandler(
-        entry_points=[CommandHandler('converter_currency', first_response, pass_user_data=True)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), set_amount, pass_user_data=True)],
-            2: [MessageHandler(Filters.text & (~ Filters.command), set_from_cur, pass_user_data=True)],
-            3: [MessageHandler(Filters.text & (~ Filters.command), set_to_cur, pass_user_data=True)]
-        },
-        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
-    )
-    dp.add_handler(converter_handler)
-    translate_handler = ConversationHandler(
-        entry_points=[CommandHandler('translate', first_response, pass_user_data=True)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), set_from_lang, pass_user_data=True)],
-            2: [MessageHandler(Filters.text & (~ Filters.command), set_to_lang, pass_user_data=True)],
-            3: [MessageHandler(Filters.text & (~ Filters.command), set_text_for_translate, pass_user_data=True)]
-        },
-        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
-    )
-    dp.add_handler(translate_handler)
-    spell_handler = ConversationHandler(
-        entry_points=[CommandHandler('spell_check', first_response)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), spell_checker)]
-        },
-        fallbacks=[CommandHandler('stop', stop)]
-    )
-    dp.add_handler(spell_handler)
-    ip_handler = ConversationHandler(
-        entry_points=[CommandHandler('ip_check', first_response)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), ip_checker)]
-        },
-        fallbacks=[CommandHandler('stop', stop)]
-    )
-    dp.add_handler(ip_handler)
-    phone_number_handler = ConversationHandler(
-        entry_points=[CommandHandler('phone_number_check', first_response)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), phone_number_checker)]
-        },
-        fallbacks=[CommandHandler('stop', stop)]
-    )
-    dp.add_handler(phone_number_handler)
-    url_shortener_handler = ConversationHandler(
-        entry_points=[CommandHandler('url_shortener', first_response)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), url_shortener)]
-        },
-        fallbacks=[CommandHandler('stop', stop)]
-    )
-    dp.add_handler(url_shortener_handler)
-    lyrics_handler = ConversationHandler(
-        entry_points=[CommandHandler('lyrics', first_response, pass_user_data=True)],
-        states={
-            1: [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
-            2: [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)]
-        },
-        fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
-    )
-    dp.add_handler(lyrics_handler)
-    dp.add_handler(CommandHandler('anecdote', anecdote))
+    dp.add_handler(conv_handler)
     updater.start_polling()
     updater.idle()
 
