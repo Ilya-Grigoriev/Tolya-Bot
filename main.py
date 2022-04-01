@@ -1,10 +1,12 @@
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler, CallbackQueryHandler
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Bot
 import requests
 from datetime import datetime
 import traceback
 import re
 import xml.etree.ElementTree as ET
+from PIL import Image
+from io import BytesIO
 
 
 def clear_data(context):
@@ -19,7 +21,8 @@ def clear_data(context):
 def start_keyboard():
     reply_keyboard = [['Прогноз погоды', 'Конвертер валют', 'Переводчик текста'], ['Орфографический анализ текста'],
                       ['Получение информации по IP-адресу', 'Получение информации по номеру телефона'],
-                      ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот']]
+                      ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот'],
+                      ['Создание QR-кода']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -58,6 +61,9 @@ def first_response(update, context):
         for i in anecdote():
             update.message.reply_text(i)
         update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+    elif update.message['text'] == 'Создание QR-кода':
+        update.message.reply_text('Введите текст или ссылку:')
+        return 'QR_CODE'
     return ConversationHandler.END
 
 
@@ -398,7 +404,6 @@ def set_song(update, context):
 # Анекдот
 def anecdote():
     try:
-        text = update.message['text']
         response = requests.get('http://rzhunemogu.ru/Rand.aspx?CType=1')
         root = ET.fromstring(response.content.decode(response.encoding))
         list_1 = []
@@ -408,6 +413,24 @@ def anecdote():
     except Exception:
         print(traceback.format_exc())
         return ['Не удалось обработать ваш запрос']
+
+
+# Создание QR-кода
+def qr_code_creating(update, context):
+    try:
+        text = update.message['text']
+        url_qr_code = 'https://api.qrserver.com/v1/create-qr-code/?'
+        params = {'data': text}
+        response = requests.get(url_qr_code, params=params)
+        update.message.reply_text('QR-код создан', reply_markup=start_keyboard())
+        chat_id = update.message['chat']['id']
+        bot = Bot(token='5147228144:AAG-lIcg7-YZJqpJ5gfHZrR_J6hBtAZomO0')
+        bot.send_photo(chat_id=chat_id, photo=BytesIO(response.content))
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    clear_data(context)
+    return ConversationHandler.END
 
 
 # Остановщик
@@ -439,6 +462,7 @@ def main():
             'URL_SHORTENER': [MessageHandler(Filters.text & (~ Filters.command), url_shortener)],
             'SET_SINGER': [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
             'SET_SONG': [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)],
+            'QR_CODE': [MessageHandler(Filters.text & (~ Filters.command), qr_code_creating)]
         },
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
