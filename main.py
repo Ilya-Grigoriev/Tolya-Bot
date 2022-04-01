@@ -398,7 +398,6 @@ def set_song(update, context):
 # Анекдот
 def anecdote():
     try:
-        text = update.message['text']
         response = requests.get('http://rzhunemogu.ru/Rand.aspx?CType=1')
         root = ET.fromstring(response.content.decode(response.encoding))
         list_1 = []
