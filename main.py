@@ -464,7 +464,7 @@ def text_to_speech(update, context):
         tts = gTTS(text, lang=context.user_data['languages'][lang])
         tts.save(name_file)
         update.message.reply_text('Преобразование готово', reply_markup=start_keyboard())
-        bot = Bot(token='677970032:AAEJifhRsPjJG2luEgAvQ7Q9pwX8IG9VQ8I')
+        bot = Bot(token='5147228144:AAG-lIcg7-YZJqpJ5gfHZrR_J6hBtAZomO0')
         bot.send_audio(chat_id=chat_id, audio=open(name_file, 'rb'))
     except Exception:
         print(traceback.format_exc())
