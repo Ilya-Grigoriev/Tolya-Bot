@@ -5,6 +5,7 @@ from datetime import datetime
 import traceback
 import re
 import xml.etree.ElementTree as ET
+from io import BytesIO
 
 
 def clear_data(context):
@@ -14,12 +15,14 @@ def clear_data(context):
     context.user_data['from_lang'] = None
     context.user_data['to_lang'] = None
     context.user_data['songs'] = None
+    context.user_data['lang_for_speech'] = None
 
 
 def start_keyboard():
     reply_keyboard = [['Прогноз погоды', 'Конвертер валют', 'Переводчик текста'], ['Орфографический анализ текста'],
                       ['Получение информации по IP-адресу', 'Получение информации по номеру телефона'],
-                      ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот']]
+                      ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот'],
+                      ['Создание QR-кода', 'Преобразование текста в речь']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     return markup
 
@@ -27,6 +30,8 @@ def start_keyboard():
 def first_response(update, context):
     context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
                                       'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
+    reply_keyboard = [[i] for i in context.user_data['languages']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     if update.message['text'] == 'Прогноз погоды':
         update.message.reply_text('Введите название города:')
         return 'FORECAST'
@@ -34,8 +39,6 @@ def first_response(update, context):
         update.message.reply_text('Введите количество денег:')
         return 'SET_AMOUNT'
     elif update.message['text'] == 'Переводчик текста':
-        reply_keyboard = [[i] for i in context.user_data['languages']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         update.message.reply_text('Выберите язык, с которого переводите текст:', reply_markup=markup)
         return 'SET_FROM_LANG'
     elif update.message['text'] == 'Орфографический анализ текста':
@@ -58,6 +61,12 @@ def first_response(update, context):
         for i in anecdote():
             update.message.reply_text(i)
         update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+    elif update.message['text'] == 'Создание QR-кода':
+        update.message.reply_text('Введите текст или ссылку:')
+        return 'QR_CODE'
+    elif update.message['text'] == 'Преобразование текста в речь':
+        update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
+        return 'SET_LANG_FOR_SPEECH'
     return ConversationHandler.END
 
 
@@ -409,6 +418,63 @@ def anecdote():
         return ['Не удалось обработать ваш запрос']
 
 
+# Создание QR-кода
+def qr_code_creating(update, context):
+    try:
+        text = update.message['text']
+        url_qr_code = 'https://api.qrserver.com/v1/create-qr-code/?'
+        params = {'data': text}
+        response = requests.get(url_qr_code, params=params)
+        update.message.reply_text('QR-код создан', reply_markup=start_keyboard())
+        chat_id = update.message['chat']['id']
+        bot = Bot(token='5147228144:AAG-lIcg7-YZJqpJ5gfHZrR_J6hBtAZomO0')
+        bot.send_photo(chat_id=chat_id, photo=BytesIO(response.content))
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    clear_data(context)
+    return ConversationHandler.END
+
+
+# Преобразование текста в аудио
+def set_lang_for_speech(update, context):
+    try:
+        lang = update.message['text']
+        if lang in context.user_data['languages'].keys():
+            context.user_data['lang_for_speech'] = lang
+            update.message.reply_text('Введите текст', reply_markup=ReplyKeyboardRemove())
+            return 'TEXT_TO_SPEECH'
+        else:
+            update.message.reply_text('Данного языка нет в списке')
+            update.message.reply_text('Выберите язык для озвучки:')
+            return 'SET_LANG_FOR_SPEECH'
+    except Exception:
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+        clear_data(context)
+        return ConversationHandler.END
+
+
+def text_to_speech(update, context):
+    name_file = None
+    try:
+        text = update.message['text']
+        lang = context.user_data['lang_for_speech']
+        chat_id = update.message['chat']['id']
+        name_file = f'data/{chat_id}.mp3'
+        tts = gTTS(text, lang=context.user_data['languages'][lang])
+        tts.save(name_file)
+        update.message.reply_text('Преобразование готово', reply_markup=start_keyboard())
+        bot = Bot(token='677970032:AAEJifhRsPjJG2luEgAvQ7Q9pwX8IG9VQ8I')
+        bot.send_audio(chat_id=chat_id, audio=open(name_file, 'rb'))
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    if os.path.isfile(name_file):
+        os.remove(name_file)
+    clear_data(context)
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     clear_data(context)
@@ -438,6 +504,10 @@ def main():
             'URL_SHORTENER': [MessageHandler(Filters.text & (~ Filters.command), url_shortener)],
             'SET_SINGER': [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
             'SET_SONG': [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)],
+            'QR_CODE': [MessageHandler(Filters.text & (~ Filters.command), qr_code_creating)],
+            'SET_LANG_FOR_SPEECH': [
+                MessageHandler(Filters.text & (~ Filters.command), set_lang_for_speech, pass_user_data=True)],
+            'TEXT_TO_SPEECH': [MessageHandler(Filters.text & (~ Filters.command), text_to_speech, pass_user_data=True)]
         },
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
