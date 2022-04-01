@@ -488,6 +488,7 @@ def main():
     token = '5147228144:AAG-lIcg7-YZJqpJ5gfHZrR_J6hBtAZomO0'
     updater = Updater(token)
     dp = updater.dispatcher
+    os.mkdir('data')
     dp.add_handler(CommandHandler('start', start, pass_user_data=True))
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(Filters.text & (~ Filters.command), first_response)],
