@@ -25,7 +25,7 @@ def start_keyboard():
                       ['Проверка IP-адреса', 'Проверка номера телефона'],
                       ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот'],
                       ['Создание QR-кода', 'Преобразование текста в речь']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     return markup
 
 
