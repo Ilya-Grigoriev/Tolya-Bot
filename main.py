@@ -22,10 +22,15 @@ def clear_data(context):
 
 def start_keyboard():
     reply_keyboard = [['Прогноз погоды', 'Конвертер валют', 'Переводчик текста'], ['Орфографический анализ текста'],
-                      ['Получение информации по IP-адресу', 'Получение информации по номеру телефона'],
+                      ['Проверка IP-адреса', 'Проверка номера телефона'],
                       ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот'],
                       ['Создание QR-кода', 'Преобразование текста в речь']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+    return markup
+
+
+def back_button():
+    markup = ReplyKeyboardMarkup([['🔙']], one_time_keyboard=False, resize_keyboard=True)
     return markup
 
 
@@ -33,30 +38,32 @@ def first_response(update, context):
     context.user_data['languages'] = {'Французский': 'fr', 'Испанский': 'es', 'Русский': 'ru', 'Арабский': 'ar',
                                       'Португальский': 'pt', 'Немецкий': 'de', 'Английский': 'en', 'Китайский': 'zh'}
     reply_keyboard = [[i] for i in context.user_data['languages']]
+    reply_keyboard.append(['🔙'])
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+    context.user_data['keyboard_languages'] = markup
     if update.message['text'] == 'Прогноз погоды':
-        update.message.reply_text('Введите название города:')
+        update.message.reply_text('Введите название города:', reply_markup=back_button())
         return 'FORECAST'
     elif update.message['text'] == 'Конвертер валют':
-        update.message.reply_text('Введите количество денег:')
+        update.message.reply_text('Введите количество денег:', reply_markup=back_button())
         return 'SET_AMOUNT'
     elif update.message['text'] == 'Переводчик текста':
         update.message.reply_text('Выберите язык, с которого переводите текст:', reply_markup=markup)
         return 'SET_FROM_LANG'
     elif update.message['text'] == 'Орфографический анализ текста':
-        update.message.reply_text('Введите текст для проверки:')
+        update.message.reply_text('Введите текст для проверки:', reply_markup=back_button())
         return 'SPELL_CHECK'
-    elif update.message['text'] == 'Получение информации по IP-адресу':
-        update.message.reply_text('Введите IP-адрес:')
+    elif update.message['text'] == 'Проверка IP-адреса':
+        update.message.reply_text('Введите IP-адрес:', reply_markup=back_button())
         return 'IP_CHECK'
-    elif update.message['text'] == 'Получение информации по номеру телефона':
-        update.message.reply_text('Введите номер телефона:')
+    elif update.message['text'] == 'Проверка номера телефона':
+        update.message.reply_text('Введите номер телефона:', reply_markup=back_button())
         return 'PHONE_NUMBER_CHECK'
     elif update.message['text'] == 'Сократитель ссылок':
-        update.message.reply_text('Введите ссылку:')
+        update.message.reply_text('Введите ссылку:', reply_markup=back_button())
         return 'URL_SHORTENER'
     elif update.message['text'] == 'Поиск текста песни':
-        update.message.reply_text('Введите имя испольнителя:')
+        update.message.reply_text('Введите имя испольнителя:', reply_markup=back_button())
         return 'SET_SINGER'
     elif update.message['text'] == 'Случайный анекдот':
         update.message.reply_text('Внимание! В анекдоте может присутствовать нецензурная брань')
@@ -64,7 +71,7 @@ def first_response(update, context):
             update.message.reply_text(i)
         update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
     elif update.message['text'] == 'Создание QR-кода':
-        update.message.reply_text('Введите текст или ссылку:')
+        update.message.reply_text('Введите текст или ссылку:', reply_markup=back_button())
         return 'QR_CODE'
     elif update.message['text'] == 'Преобразование текста в речь':
         update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
@@ -96,6 +103,10 @@ def set_amount(update, context):
     with open('currencies.txt', encoding='utf8') as file_1:
         context.user_data['currencies'] = [i.strip('\n') for i in file_1.readlines()]
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         context.user_data['amount'] = float(update.message['text'])
         if context.user_data['amount'] < 0:
             update.message.reply_text('Нельзя вводить отрицательное количество денег')
@@ -103,6 +114,7 @@ def set_amount(update, context):
             return 'SET_AMOUNT'
         update.message.reply_text('\n'.join(context.user_data['currencies']))
         reply_keyboard = [[i.split()[0]] for i in context.user_data['currencies']]
+        reply_keyboard.append(['🔙'])
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
         update.message.reply_text('Выберите валюту, из который переводите деньги:', reply_markup=markup)
         return 'SET_FROM_CUR'
@@ -117,6 +129,9 @@ def set_amount(update, context):
 
 def set_from_cur(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Введите количество денег:', reply_markup=back_button())
+            return 'SET_AMOUNT'
         cur = update.message['text']
         if cur in ' '.join(context.user_data['currencies']):
             context.user_data['from_cur'] = cur
@@ -135,6 +150,9 @@ def set_from_cur(update, context):
 
 def set_to_cur(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Выберите валюту, из который переводите деньги:')
+            return 'SET_FROM_CUR'
         cur = update.message['text']
         if cur in ' '.join([i.split()[0] for i in context.user_data['currencies']]):
             context.user_data['to_cur'] = cur
@@ -162,6 +180,10 @@ def set_to_cur(update, context):
 # Прогноз погоды
 def forecast(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         dict_wind = {'nw': 'северо-западное', 'n': 'северное', 'ne': 'северо-восточное', 'e': 'восточное',
                      'se': 'юго-восточное', 's': 'южное', 'sw': 'юго-западное', 'w': 'западное', 'c': 'штиль'}
         place = update.message['text']
@@ -209,6 +231,10 @@ def forecast(update, context):
 # Переводчик
 def set_from_lang(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         lang = update.message['text']
         if lang in context.user_data['languages'].keys():
             context.user_data['from_lang'] = lang
@@ -226,10 +252,13 @@ def set_from_lang(update, context):
 
 def set_to_lang(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Выберите язык, с которого переводите текст:')
+            return 'SET_FROM_LANG'
         lang = update.message['text']
         if lang in context.user_data['languages'].keys():
             context.user_data['to_lang'] = lang
-            update.message.reply_text('Введите текст для перевода:', reply_markup=ReplyKeyboardRemove())
+            update.message.reply_text('Введите текст для перевода:', reply_markup=back_button())
         else:
             update.message.reply_text('Данного языка нет в списке')
             update.message.reply_text('Выберите язык, на который хотите перевести текст:')
@@ -243,6 +272,10 @@ def set_to_lang(update, context):
 
 def set_text_for_translate(update, context):
     try:
+        if update.message['text'] == '🔙':
+            markup = context.user_data['keyboard_languages']
+            update.message.reply_text('Выберите язык, на который хотите перевести текст:', reply_markup=markup)
+            return 'SET_TO_LANG'
         text = update.message['text']
         from_lang = context.user_data['from_lang']
         to_lang = context.user_data['to_lang']
@@ -258,6 +291,10 @@ def set_text_for_translate(update, context):
 # Проверка орфографии
 def spell_checker(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         # text = re.sub(r'[^\w\s]', '', update.message['text']).split()
         text = update.message['text'].split()
         url_checker = 'https://speller.yandex.net/services/spellservice.json/checkText?'
@@ -280,6 +317,10 @@ def spell_checker(update, context):
 # Проверка ip-адреса
 def ip_checker(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         ip = update.message['text']
         if re.match(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$", ip):
             response = requests.get(f'http://ipwhois.app/json/{ip}').json()
@@ -303,6 +344,10 @@ def ip_checker(update, context):
 # Проверка номера телефона
 def phone_number_checker(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         number = update.message['text']
         key = '658b78d8286245e6b363f9fe2bd632da'
         params = {'number': number, 'access_key': key}
@@ -329,6 +374,10 @@ def phone_number_checker(update, context):
 # Сокращение URL-адресов
 def url_shortener(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         link = update.message['text']
         url = "https://url-shortener-service.p.rapidapi.com/shorten"
         payload = f"url={link}"
@@ -354,6 +403,10 @@ def url_shortener(update, context):
 # Получение текста песни
 def set_singer(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         singer_name = update.message['text']
         url = "https://genius.p.rapidapi.com/search"
         querystring = {"q": singer_name}
@@ -378,6 +431,9 @@ def set_singer(update, context):
 
 def set_song(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Введите имя исполнителя:')
+            return 'SET_SINGER'
         song_name = update.message['text']
         songs = context.user_data['songs']
         id_song = None
@@ -423,6 +479,10 @@ def anecdote():
 # Создание QR-кода
 def qr_code_creating(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         text = update.message['text']
         url_qr_code = 'https://api.qrserver.com/v1/create-qr-code/?'
         params = {'data': text}
@@ -441,10 +501,14 @@ def qr_code_creating(update, context):
 # Преобразование текста в аудио
 def set_lang_for_speech(update, context):
     try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
         lang = update.message['text']
         if lang in context.user_data['languages'].keys():
             context.user_data['lang_for_speech'] = lang
-            update.message.reply_text('Введите текст', reply_markup=ReplyKeyboardRemove())
+            update.message.reply_text('Введите текст:', reply_markup=back_button())
             return 'TEXT_TO_SPEECH'
         else:
             update.message.reply_text('Данного языка нет в списке')
@@ -459,6 +523,10 @@ def set_lang_for_speech(update, context):
 def text_to_speech(update, context):
     name_file = None
     try:
+        if update.message['text'] == '🔙':
+            markup = context.user_data['keyboard_languages']
+            update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
+            return 'SET_LANG_FOR_SPEECH'
         text = update.message['text']
         lang = context.user_data['lang_for_speech']
         chat_id = update.message['chat']['id']
@@ -488,7 +556,8 @@ def main():
     token = '5147228144:AAG-lIcg7-YZJqpJ5gfHZrR_J6hBtAZomO0'
     updater = Updater(token)
     dp = updater.dispatcher
-    os.mkdir('data')
+    if os.path.isdir('data') is not True:
+        os.mkdir('data')
     dp.add_handler(CommandHandler('start', start, pass_user_data=True))
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(Filters.text & (~ Filters.command), first_response)],
