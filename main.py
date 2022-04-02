@@ -67,9 +67,10 @@ def first_response(update, context):
         return 'SET_SINGER'
     elif update.message['text'] == 'Случайный анекдот':
         update.message.reply_text('Внимание! В анекдоте может присутствовать нецензурная брань')
-        for i in anecdote():
+        list_anecdote = anecdote()
+        for i in list_anecdote[:-1]:
             update.message.reply_text(i)
-        update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+        update.message.reply_text(list_anecdote[-1], reply_markup=start_keyboard())
     elif update.message['text'] == 'Создание QR-кода':
         update.message.reply_text('Введите текст или ссылку:', reply_markup=back_button())
         return 'QR_CODE'
