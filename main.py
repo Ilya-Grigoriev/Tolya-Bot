@@ -468,10 +468,10 @@ def anecdote():
         list_1 = []
         for i in root:
             list_1.append(i.text)
-        return list_1
+        return list_1[0]
     except Exception:
         print(traceback.format_exc())
-        return ['Не удалось обработать ваш запрос']
+        return 'Не удалось обработать ваш запрос'
 
 
 # Создание QR-кода
