@@ -74,6 +74,8 @@ def first_response(update, context):
     elif update.message['text'] == 'Преобразование текста в речь':
         update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
         return 'SET_LANG_FOR_SPEECH'
+    else:
+        update.message.reply_text('Не удалось распознать команду', reply_markup=start_keyboard())
     return ConversationHandler.END
 
 
