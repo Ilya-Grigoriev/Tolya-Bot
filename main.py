@@ -25,7 +25,7 @@ def start_keyboard():
                       ['Проверка IP-адреса', 'Проверка номера телефона'],
                       ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот'],
                       ['Создание QR-кода', 'Преобразование текста в речь']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     return markup
 
 
@@ -67,15 +67,15 @@ def first_response(update, context):
         return 'SET_SINGER'
     elif update.message['text'] == 'Случайный анекдот':
         update.message.reply_text('Внимание! В анекдоте может присутствовать нецензурная брань')
-        for i in anecdote():
-            update.message.reply_text(i)
-        update.message.reply_text('Конец анекдота!', reply_markup=start_keyboard())
+        update.message.reply_text(anecdote(), reply_markup=start_keyboard())
     elif update.message['text'] == 'Создание QR-кода':
         update.message.reply_text('Введите текст или ссылку:', reply_markup=back_button())
         return 'QR_CODE'
     elif update.message['text'] == 'Преобразование текста в речь':
         update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
         return 'SET_LANG_FOR_SPEECH'
+    else:
+        update.message.reply_text('Не удалось распознать команду', reply_markup=start_keyboard())
     return ConversationHandler.END
 
 
@@ -470,10 +470,10 @@ def anecdote():
         list_1 = []
         for i in root:
             list_1.append(i.text)
-        return list_1
+        return list_1[0]
     except Exception:
         print(traceback.format_exc())
-        return ['Не удалось обработать ваш запрос']
+        return 'Не удалось обработать ваш запрос'
 
 
 # Создание QR-кода
