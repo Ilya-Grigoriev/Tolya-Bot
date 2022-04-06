@@ -26,7 +26,7 @@ def start_keyboard():
                       ['Проверка IP-адреса', 'Проверка номера телефона'],
                       ['Сократитель ссылок', 'Поиск текста песни', 'Создание QR-кода'],
                       ['Случайный анекдот', 'Случайная цитата'],
-                      ['Преобразование текста в речь', 'Получение информации из Википедии']]
+                      ['Преобразование текста в речь', 'Запрос в Википедию']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     return markup
 
@@ -78,7 +78,7 @@ def first_response(update, context):
         return 'SET_LANG_FOR_SPEECH'
     elif update.message['text'] == 'Случайная цитата':
         update.message.reply_text(quote())
-    elif update.message['text'] == 'Получение информации из Википедии':
+    elif update.message['text'] == 'Запрос в Википедию':
         update.message.reply_text('Введите запрос:', reply_markup=back_button())
         return 'WIKIPEDIA'
     else:
