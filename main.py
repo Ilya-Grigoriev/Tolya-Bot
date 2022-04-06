@@ -583,6 +583,9 @@ def get_info_from_wikipedia(update, context):
         update.message.reply_text('Не удалось найти информацию по вашему запросу')
         update.message.reply_text('Введите запрос:')
         return 'WIKIPEDIA'
+    except wikipedia.exceptions.DisambiguationError:
+        update.message.reply_text('Введите более точный запрос:')
+        return 'WIKIPEDIA'
     except Exception:
         print(traceback.format_exc())
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
