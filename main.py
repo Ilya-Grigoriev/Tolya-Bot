@@ -487,7 +487,7 @@ def quote():
         text = response['quoteText']
         name_author = response['quoteAuthor']
         if name_author:
-            return text + '\n' + name_author
+            return text + '\n- ' + name_author
         return text
     except Exception:
         print(traceback.format_exc())
