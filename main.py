@@ -76,13 +76,7 @@ def first_response(update, context):
         update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
         return 'SET_LANG_FOR_SPEECH'
     elif update.message['text'] == 'Случайная цитата':
-        url = 'http://api.forismatic.com/api/1.0/?method=getQuote&key=457653&format=json&lang=ru'
-        response = requests.get(url).json()
-        text = response['quoteText']
-        name_author = response['quoteAuthor']
-        update.message.reply_text(text)
-        if name_author:
-            update.message.reply_text(name_author)
+        update.message.reply_text(quote())
     else:
         update.message.reply_text('Не удалось распознать команду', reply_markup=start_keyboard())
     return ConversationHandler.END
@@ -480,6 +474,21 @@ def anecdote():
         for i in root:
             list_1.append(i.text)
         return list_1[0]
+    except Exception:
+        print(traceback.format_exc())
+        return 'Не удалось обработать ваш запрос'
+
+
+# Цитата
+def quote():
+    try:
+        url = 'http://api.forismatic.com/api/1.0/?method=getQuote&key=457653&format=json&lang=ru'
+        response = requests.get(url).json()
+        text = response['quoteText']
+        name_author = response['quoteAuthor']
+        if name_author:
+            return text + '\n' + name_author
+        return text
     except Exception:
         print(traceback.format_exc())
         return 'Не удалось обработать ваш запрос'
