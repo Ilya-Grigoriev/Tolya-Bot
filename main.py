@@ -1,3 +1,4 @@
+import wikipedia
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler
 from telegram import ReplyKeyboardMarkup, Bot
 import requests
@@ -25,7 +26,7 @@ def start_keyboard():
                       ['Проверка IP-адреса', 'Проверка номера телефона'],
                       ['Сократитель ссылок', 'Поиск текста песни', 'Создание QR-кода'],
                       ['Случайный анекдот', 'Случайная цитата'],
-                      ['Преобразование текста в речь']]
+                      ['Преобразование текста в речь', 'Получение информации из Википедии']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     return markup
 
@@ -77,6 +78,9 @@ def first_response(update, context):
         return 'SET_LANG_FOR_SPEECH'
     elif update.message['text'] == 'Случайная цитата':
         update.message.reply_text(quote())
+    elif update.message['text'] == 'Получение информации из Википедии':
+        update.message.reply_text('Введите запрос:', reply_markup=back_button())
+        return 'WIKIPEDIA'
     else:
         update.message.reply_text('Не удалось распознать команду', reply_markup=start_keyboard())
     return ConversationHandler.END
@@ -563,6 +567,29 @@ def text_to_speech(update, context):
     return ConversationHandler.END
 
 
+# Получение информации из Википедии
+def get_info_from_wikipedia(update, context):
+    try:
+        if update.message['text'] == '🔙':
+            update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
+            clear_data(context)
+            return ConversationHandler.END
+        response = update.message['text']
+        wikipedia.set_lang('ru')
+        data = wikipedia.summary(response)
+        update.message.reply_text(f'Информация по запросу "{response}":')
+        update.message.reply_text(data, reply_markup=start_keyboard())
+    except wikipedia.exceptions.PageError:
+        update.message.reply_text('Не удалось найти информацию по вашему запросу')
+        update.message.reply_text('Введите запрос:')
+        return 'WIKIPEDIA'
+    except Exception:
+        print(traceback.format_exc())
+        update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+    clear_data(context)
+    return ConversationHandler.END
+
+
 # Остановщик
 def stop(update, context):
     clear_data(context)
@@ -597,7 +624,8 @@ def main():
             'QR_CODE': [MessageHandler(Filters.text & (~ Filters.command), qr_code_creating)],
             'SET_LANG_FOR_SPEECH': [
                 MessageHandler(Filters.text & (~ Filters.command), set_lang_for_speech, pass_user_data=True)],
-            'TEXT_TO_SPEECH': [MessageHandler(Filters.text & (~ Filters.command), text_to_speech, pass_user_data=True)]
+            'TEXT_TO_SPEECH': [MessageHandler(Filters.text & (~ Filters.command), text_to_speech, pass_user_data=True)],
+            'WIKIPEDIA': [MessageHandler(Filters.text & (~ Filters.command), get_info_from_wikipedia)]
         },
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )
