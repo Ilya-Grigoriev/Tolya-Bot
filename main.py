@@ -1,5 +1,5 @@
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Bot
+from telegram import ReplyKeyboardMarkup, Bot
 import requests
 from datetime import datetime
 import traceback
@@ -23,8 +23,9 @@ def clear_data(context):
 def start_keyboard():
     reply_keyboard = [['Прогноз погоды', 'Конвертер валют', 'Переводчик текста'], ['Орфографический анализ текста'],
                       ['Проверка IP-адреса', 'Проверка номера телефона'],
-                      ['Сократитель ссылок', 'Поиск текста песни', 'Случайный анекдот'],
-                      ['Создание QR-кода', 'Преобразование текста в речь']]
+                      ['Сократитель ссылок', 'Поиск текста песни', 'Создание QR-кода'],
+                      ['Случайный анекдот', 'Случайная цитата'],
+                      ['Преобразование текста в речь']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
     return markup
 
@@ -74,6 +75,14 @@ def first_response(update, context):
     elif update.message['text'] == 'Преобразование текста в речь':
         update.message.reply_text('Выберите язык для озвучки:', reply_markup=markup)
         return 'SET_LANG_FOR_SPEECH'
+    elif update.message['text'] == 'Случайная цитата':
+        url = 'http://api.forismatic.com/api/1.0/?method=getQuote&key=457653&format=json&lang=ru'
+        response = requests.get(url).json()
+        text = response['quoteText']
+        name_author = response['quoteAuthor']
+        update.message.reply_text(text)
+        if name_author:
+            update.message.reply_text(name_author)
     else:
         update.message.reply_text('Не удалось распознать команду', reply_markup=start_keyboard())
     return ConversationHandler.END
