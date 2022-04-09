@@ -381,17 +381,17 @@ def phone_number_checker(update, context):
     return ConversationHandler.END
 
 
-# Проверка ссылка на угрозы
 def url_checker(update, context):
     try:
         if update.message['text'] == '🔙':
             update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
             clear_data(context)
             return ConversationHandler.END
-        url = update.message['text']
+        resource = update.message['text']
+        url = 'https://www.virustotal.com/vtapi/v2/url/report'
         params = {
             'apikey': '1681fc0fdf50363d31b5755a3e5673f572e9cb07c169864fb1157933d35376a8',
-            'resource': url
+            'resource': resource
         }
         response = requests.get(url, params=params).json()
         count = 0
