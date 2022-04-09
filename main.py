@@ -394,14 +394,15 @@ def url_checker(update, context):
             'resource': resource
         }
         response = requests.get(url, params=params).json()
-        count = 0
-        for i in response['scans']:
-            if response['scans'][i]['detected']:
-                count += 1
-        if count == 0:
+        if response['response_code'] == 0:
+            update.message.reply_text('Не удалось обработать ваш запрос. Перепроверьте правильность ссылки на сайт!')
+            update.message.reply_text('Введите ссылку на сайт:')
+            return 'URL_CHECK'
+        positives = response['positives']
+        if positives == 0:
             update.message.reply_text('Угроз с сайта не было найдено')
         else:
-            update.message.reply_text(f'Количество угроз: {count}. Будьте осторожны!')
+            update.message.reply_text(f'Количество угроз: {positives}. Будьте осторожны!')
     except Exception:
         print(traceback.format_exc())
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
