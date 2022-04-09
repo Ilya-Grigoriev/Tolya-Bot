@@ -63,7 +63,7 @@ def first_response(update, context):
         return 'PHONE_NUMBER_CHECK'
     elif update.message['text'] == 'Проверка ссылки':
         update.message.reply_text('Введите ссылку на сайт:', reply_markup=back_button())
-        return 'CHECK_URL'
+        return 'URL_CHECK'
     elif update.message['text'] == 'Сократитель ссылок':
         update.message.reply_text('Введите ссылку:', reply_markup=back_button())
         return 'URL_SHORTENER'
@@ -651,7 +651,7 @@ def main():
             'SPELL_CHECK': [MessageHandler(Filters.text & (~ Filters.command), spell_checker)],
             'IP_CHECK': [MessageHandler(Filters.text & (~ Filters.command), ip_checker)],
             'PHONE_NUMBER_CHECK': [MessageHandler(Filters.text & (~ Filters.command), phone_number_checker)],
-            'CHECK_URL': [MessageHandler(Filters.text & (~ Filters.command), url_checker)],
+            'URL_CHECK': [MessageHandler(Filters.text & (~ Filters.command), url_checker)],
             'URL_SHORTENER': [MessageHandler(Filters.text & (~ Filters.command), url_shortener)],
             'SET_SINGER': [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
             'SET_SONG': [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)],
