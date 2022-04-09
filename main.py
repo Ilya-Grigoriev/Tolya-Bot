@@ -400,9 +400,10 @@ def url_checker(update, context):
             return 'URL_CHECK'
         positives = response['positives']
         if positives == 0:
-            update.message.reply_text('Угроз с сайта не было найдено')
+            update.message.reply_text('Угроз с сайта не было найдено', reply_markup=start_keyboard())
         else:
-            update.message.reply_text(f'Количество угроз: {positives}. Будьте осторожны!')
+            update.message.reply_text(f'Количество угроз: {positives}. Будьте осторожны!',
+                                      reply_markup=start_keyboard())
     except Exception:
         print(traceback.format_exc())
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
