@@ -63,7 +63,7 @@ def first_response(update, context):
         return 'PHONE_NUMBER_CHECK'
     elif update.message['text'] == 'Проверка ссылки':
         update.message.reply_text('Введите ссылку на сайт:', reply_markup=back_button())
-        return 'CHECK_URL'
+        return 'URL_CHECK'
     elif update.message['text'] == 'Сократитель ссылок':
         update.message.reply_text('Введите ссылку:', reply_markup=back_button())
         return 'URL_SHORTENER'
@@ -381,27 +381,29 @@ def phone_number_checker(update, context):
     return ConversationHandler.END
 
 
-# Проверка ссылка на угрозы
 def url_checker(update, context):
     try:
         if update.message['text'] == '🔙':
             update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
             clear_data(context)
             return ConversationHandler.END
-        url = update.message['text']
+        resource = update.message['text']
+        url = 'https://www.virustotal.com/vtapi/v2/url/report'
         params = {
             'apikey': '1681fc0fdf50363d31b5755a3e5673f572e9cb07c169864fb1157933d35376a8',
-            'resource': url
+            'resource': resource
         }
         response = requests.get(url, params=params).json()
-        count = 0
-        for i in response['scans']:
-            if response['scans'][i]['detected']:
-                count += 1
-        if count == 0:
-            update.message.reply_text('Угроз с сайта не было найдено')
+        if response['response_code'] == 0:
+            update.message.reply_text('Не удалось обработать ваш запрос. Перепроверьте правильность ссылки на сайт!')
+            update.message.reply_text('Введите ссылку на сайт:')
+            return 'URL_CHECK'
+        positives = response['positives']
+        if positives == 0:
+            update.message.reply_text('Угроз с сайта не было найдено', reply_markup=start_keyboard())
         else:
-            update.message.reply_text(f'Количество угроз: {count}. Будьте осторожны!')
+            update.message.reply_text(f'Количество угроз: {positives}. Будьте осторожны!',
+                                      reply_markup=start_keyboard())
     except Exception:
         print(traceback.format_exc())
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
@@ -651,7 +653,7 @@ def main():
             'SPELL_CHECK': [MessageHandler(Filters.text & (~ Filters.command), spell_checker)],
             'IP_CHECK': [MessageHandler(Filters.text & (~ Filters.command), ip_checker)],
             'PHONE_NUMBER_CHECK': [MessageHandler(Filters.text & (~ Filters.command), phone_number_checker)],
-            'CHECK_URL': [MessageHandler(Filters.text & (~ Filters.command), url_checker)],
+            'URL_CHECK': [MessageHandler(Filters.text & (~ Filters.command), url_checker)],
             'URL_SHORTENER': [MessageHandler(Filters.text & (~ Filters.command), url_shortener)],
             'SET_SINGER': [MessageHandler(Filters.text & (~ Filters.command), set_singer, pass_user_data=True)],
             'SET_SONG': [MessageHandler(Filters.text & (~ Filters.command), set_song, pass_user_data=True)],
