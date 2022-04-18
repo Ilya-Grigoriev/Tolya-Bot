@@ -194,8 +194,8 @@ def forecast(update, context):
             update.message.reply_text('Главное меню:', reply_markup=start_keyboard())
             clear_data(context)
             return ConversationHandler.END
-        dict_wind = {'nw': 'северо-западное', 'n': 'северное', 'ne': 'северо-восточное', 'e': 'восточное',
-                     'se': 'юго-восточное', 's': 'южное', 'sw': 'юго-западное', 'w': 'западное', 'c': 'штиль'}
+        # dict_wind = {'nw': 'северо-западное', 'n': 'северное', 'ne': 'северо-восточное', 'e': 'восточное',
+        #              'se': 'юго-восточное', 's': 'южное', 'sw': 'юго-западное', 'w': 'западное', 'c': 'штиль'}
         place = update.message['text']
         if place.isdigit():
             update.message.reply_text('Некорректное название города')
@@ -207,24 +207,25 @@ def forecast(update, context):
         if response:
             json_response = response.json()
             pos = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]['Point']['pos']
-            lon, lat = pos.split()
+            # lon, lat = pos.split()
         else:
             print("Ошибка выполнения запроса:")
             print(geocoder_request)
             print("Http статус:", response.status_code, "(", response.reason, ")")
             raise Exception
-        headers = {'lat': lat, 'lon': lon, 'lang': 'ru_RU',
-                   'X-Yandex-API-Key': '9009f2a9-7220-4bb5-be28-0fad1d330b93'}
-        response = requests.get('https://api.weather.yandex.ru/v2/forecast?', headers=headers).json()
-        ts = int(response['now'])
-        date = datetime.utcfromtimestamp(ts).strftime('%d.%m.%Y')
-        temp = response['fact']['temp']
-        feels_temp = response['fact']['feels_like']
-        condition = translate(response['fact']['condition'], 'en', 'ru')
-        pressure = response['fact']['pressure_mm']
-        humidity = response['fact']['humidity']
-        wind_speed = response['fact']['wind_speed']
-        wind_dir = dict_wind[response['fact']['wind_dir']]
+        url = 'https://api.openweathermap.org/data/2.5/weather?'
+        params = {'q': 'Казань', 'appid': '8c8f1d5a14047d61ab958d3874d1d63c', 'lang': 'ru', 'units': 'metric'}
+        response = requests.get(url, params=params)
+        unix_time = response['dt']
+        date_time = datetime.fromtimestamp(unix_time)
+        date = date_time.strftime('%Y-%m-%d %H:%M:%S')
+        temp = response['main']['temp']
+        feels_temp = response['main']['feels_like']
+        condition = response['weather']['description']
+        pressure = response['main']['pressure']
+        humidity = response['main']['humidity']
+        wind_speed = response['wind']['speed']
+        clouds = response['clouds']['all']
         update.message.reply_text(f'Прогноз погоды сегодня в городе {place.capitalize()} на {date}:')
         update.message.reply_text(f'Температура: {temp}℃')
         update.message.reply_text(f'Ощущаемая температура: {feels_temp}℃')
@@ -232,7 +233,7 @@ def forecast(update, context):
         update.message.reply_text(f'Давление: {pressure} мм')
         update.message.reply_text(f'Влажность: {humidity}%')
         update.message.reply_text(f'Скорость ветра: {wind_speed} м/с')
-        update.message.reply_text(f'Направление ветра: {wind_dir}', reply_markup=start_keyboard())
+        update.message.reply_text(f'Облачность: {clouds}%', reply_markup=start_keyboard())
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
     return ConversationHandler.END
