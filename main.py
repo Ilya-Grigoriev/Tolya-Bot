@@ -59,6 +59,7 @@ def first_response(update, context):
         update.message.reply_text('Введите IP-адрес:', reply_markup=back_button())
         return 'IP_CHECK'
     elif update.message['text'] == 'Проверка номера телефона':
+        update.message.reply_text('Желательный формат номера телефона: +79999999999')
         update.message.reply_text('Введите номер телефона:', reply_markup=back_button())
         return 'PHONE_NUMBER_CHECK'
     elif update.message['text'] == 'Проверка ссылки':
