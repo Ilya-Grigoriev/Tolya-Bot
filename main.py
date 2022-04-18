@@ -216,13 +216,13 @@ def forecast(update, context):
             raise Exception
         url = 'https://api.openweathermap.org/data/2.5/weather?'
         params = {'q': 'Казань', 'appid': '8c8f1d5a14047d61ab958d3874d1d63c', 'lang': 'ru', 'units': 'metric'}
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params).json()
         unix_time = response['dt']
         date_time = datetime.fromtimestamp(unix_time)
-        date = date_time.strftime('%Y-%m-%d %H:%M:%S')
-        temp = response['main']['temp']
-        feels_temp = response['main']['feels_like']
-        condition = response['weather']['description']
+        date = date_time.strftime('%Y-%m-%d')
+        temp = int(response['main']['temp'])
+        feels_temp = int(response['main']['feels_like'])
+        condition = response['weather'][0]['description']
         pressure = response['main']['pressure']
         humidity = response['main']['humidity']
         wind_speed = response['wind']['speed']
@@ -237,6 +237,7 @@ def forecast(update, context):
         update.message.reply_text(f'Облачность: {clouds}%', reply_markup=start_keyboard())
     except Exception:
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
+        print(traceback.format_exc())
     return ConversationHandler.END
 
 
