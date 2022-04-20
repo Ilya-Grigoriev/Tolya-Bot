@@ -384,6 +384,7 @@ def phone_number_checker(update, context):
     return ConversationHandler.END
 
 
+# Проверка ссылки на уязвимости
 def url_checker(update, context):
     try:
         if update.message['text'] == '🔙':
