@@ -66,7 +66,7 @@ def first_response(update, context):
         update.message.reply_text('Введите ссылку на сайт:', reply_markup=back_button())
         return 'URL_CHECK'
     elif update.message['text'] == 'Сократитель ссылок':
-        update.message.reply_text('Введите ссылку:', reply_markup=back_button())
+        update.message.reply_text('Введите ссылку на сайт:', reply_markup=back_button())
         return 'URL_SHORTENER'
     elif update.message['text'] == 'Поиск текста песни':
         update.message.reply_text('Введите имя испольнителя:', reply_markup=back_button())
@@ -432,11 +432,14 @@ def url_shortener(update, context):
         response = requests.request("POST", url, data=payload, headers=headers).json()
         if response.get('error'):
             update.message.reply_text('Введена некорректная ссылка')
-            update.message.reply_text('Введите ссылку:')
+            update.message.reply_text('Введите ссылку на сайт:')
             return 'URL_SHORTENER'
         else:
             update.message.reply_text('Итоговый вид сокращённой ссылки:')
             update.message.reply_text(response['result_url'], reply_markup=start_keyboard())
+    except UnicodeEncodeError:
+        update.message.reply_text('Введите ссылку на сайт:')
+        return 'URL_SHORTENER'
     except Exception:
         print(traceback.format_exc())
         update.message.reply_text('Не удалось обработать ваш запрос', reply_markup=start_keyboard())
