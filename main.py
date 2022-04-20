@@ -431,13 +431,14 @@ def url_shortener(update, context):
         }
         response = requests.request("POST", url, data=payload, headers=headers).json()
         if response.get('error'):
-            update.message.reply_text('Введена некорректная ссылка')
+            update.message.reply_text('Не удалось обработать ваш запрос. Перепроверьте правильность ссылки на сайт!')
             update.message.reply_text('Введите ссылку на сайт:')
             return 'URL_SHORTENER'
         else:
             update.message.reply_text('Итоговый вид сокращённой ссылки:')
             update.message.reply_text(response['result_url'], reply_markup=start_keyboard())
     except UnicodeEncodeError:
+        update.message.reply_text('Не удалось обработать ваш запрос. Перепроверьте правильность ссылки на сайт!')
         update.message.reply_text('Введите ссылку на сайт:')
         return 'URL_SHORTENER'
     except Exception:
