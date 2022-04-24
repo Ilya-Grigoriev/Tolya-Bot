@@ -1,4 +1,4 @@
-import wikipedia
+import wikipediaapi
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, ConversationHandler
 from telegram import ReplyKeyboardMarkup, Bot
 import requests
@@ -615,11 +615,12 @@ def get_info_from_wikipedia(update, context):
             clear_data(context)
             return ConversationHandler.END
         response = update.message['text']
-        wikipedia.set_lang('ru')
-        data = wikipedia.summary(response)
+        wiki = wikipediaapi.Wikipedia('ru')
+        data = wiki.page(response)
         update.message.reply_text(f'Информация по запросу "{response}":')
-        update.message.reply_text(data, reply_markup=start_keyboard())
-    except wikipedia.exceptions.PageError:
+        update.message.reply_text(data.summary)
+        update.message.reply_text(f"Ссылка на статью: {data.fullurl}", reply_markup=start_keyboard())
+    except KeyError:
         update.message.reply_text('Не удалось найти информацию по вашему запросу')
         update.message.reply_text('Введите запрос:')
         return 'WIKIPEDIA'
