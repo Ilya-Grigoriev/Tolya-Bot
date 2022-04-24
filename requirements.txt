@@ -1,4 +1,4 @@
 requests~=2.27.1
 python-telegram-bot
-gTTS
-wikipedia
+gTTS~=2.2.4
+Wikipedia-API~=0.5.4
